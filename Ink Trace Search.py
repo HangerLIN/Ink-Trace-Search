@@ -56,8 +56,13 @@ class MarkdownSearchApp:
         # Pagination buttons
         nav_frame = tk.Frame(root)
         nav_frame.pack(pady=5)
+
         self.btn_prev_page = tk.Button(nav_frame, text="<< Previous Page", command=self.prev_page)
         self.btn_prev_page.pack(side=tk.LEFT, padx=10)
+
+        # New label for showing current page / total pages
+        self.page_number_label = tk.Label(nav_frame, text="Page 0/0")
+        self.page_number_label.pack(side=tk.LEFT, padx=10)
 
         self.btn_next_page = tk.Button(nav_frame, text="Next Page >>", command=self.next_page)
         self.btn_next_page.pack(side=tk.RIGHT, padx=10)
@@ -303,8 +308,10 @@ class MarkdownSearchApp:
         file_paths = list(self.results_by_file.keys())[start:end]
 
         for file_path in file_paths:
-            display_name = os.path.basename(file_path)
-            self.text_result.insert(tk.END, f"File: {display_name}\n", 'file')
+            # Calculate relative path from the directory to the file
+            relative_path = os.path.relpath(file_path, self.directory)
+            display_text = f"File: {os.path.basename(file_path)} [{relative_path}]\n"
+            self.text_result.insert(tk.END, display_text, 'file')
             # Use an inline function to create a closure
             callback = lambda e, path=file_path: self.open_file(path)
             self.text_result.tag_bind('file', '<Button-1>', callback)
@@ -318,7 +325,33 @@ class MarkdownSearchApp:
 
             self.text_result.insert(tk.END, "\n")
 
+        # Calculate the total number of pages and update the label
+        total_pages = len(self.results_by_file) // self.page_size
+        if len(self.results_by_file) % self.page_size > 0:
+            total_pages += 1
+        self.page_number_label.config(text=f"Page {self.current_page + 1}/{total_pages}")
+
         self.update_pagination_buttons()
+
+    def update_pagination_buttons(self):
+        # Update the state of the previous page button
+        if self.current_page == 0:
+            self.btn_prev_page["state"] = "disabled"
+        else:
+            self.btn_prev_page["state"] = "normal"
+
+        # Update the state of the next page button
+        if (self.current_page + 1) * self.page_size >= len(self.results_by_file):
+            self.btn_next_page["state"] = "disabled"
+        else:
+            self.btn_next_page["state"] = "normal"
+
+        # Calculate the total number of pages and update the label
+        total_pages = len(self.results_by_file) // self.page_size
+        if len(self.results_by_file) % self.page_size > 0:
+            total_pages += 1
+        self.page_number_label.config(text=f"Page {self.current_page + 1}/{total_pages}")
+
 
     def highlight_text(self, text, keyword):
         start_index = self.text_result.index(tk.END)
